@@ -3,7 +3,6 @@ import sys
 import pygame
 import os
 
-
 pygame.init()
 size = width, height = 600, 450
 FPS = 60
@@ -23,25 +22,28 @@ moving_lat = {0: 30.0, 1: 15.0, 2: 7.51, 3: 3, 4: 1.875, 5: 0.9375, 6: 0.46875, 
               9: 0.05859375, 10: 0.029296875, 11: 0.0146484375, 12: 0.00732421875, 13: 0.003662109375,
               14: 0.0018310546875, 15: 0.00091552734375, 16: 0.000457763671875, 17: 0.0002288818359375,
               18: 0.00011444091796875, 19: 5.7220458984375e-05, 20: 2.86102294921875e-05, 21: 1.430511474609375e-05}
+z_lat = {0: 360.0, 1: 180.0, 2: 90.0, 3: 45.0, 4: 22.5, 5: 11.25, 6: 5.625, 7: 2.8125, 8: 1.40625, 9: 0.703125,
+         10: 0.3515625, 11: 0.17578125, 12: 0.087890625, 13: 0.0439453125, 14: 0.02197265625, 15: 0.010986328125,
+         16: 0.0054931640625, 17: 0.00274658203125, 18: 0.001373291015625, 19: 0.0006866455078125,
+         20: 0.00034332275390625, 21: 0.000171661376953125}
 
 
 def make_request_map(new_z, new_ll, new_theme, obj_ll=None):
     url = 'https://static-maps.yandex.ru/v1'
     if not obj_ll:
         params = {
-            'apikey': '4e60121e-3e68-41f0-bd84-eced30775d1c',
+            'apikey': '27b3a50d-38db-4169-addc-85eecaac37e0',
             'll': ','.join(new_ll),
             'z': str(new_z),
             'theme': new_theme
         }
     else:
-        global z_const, coord
+        global coord
         coord = obj_ll
-        z_const = 10
         params = {
-            'apikey': '4e60121e-3e68-41f0-bd84-eced30775d1c',
+            'apikey': '27b3a50d-38db-4169-addc-85eecaac37e0',
             'll': ','.join(obj_ll),
-            'z': str(z_const),
+            'z': str(new_z),
             'theme': new_theme
         }
 
@@ -67,15 +69,22 @@ def make_request_pos(text):
     }
 
     response = requests.get(url=url, params=params)
-
     if not response:
         print(f'{response.status_code} {response.reason}')
         return None
     else:
+        global z_const
         data = response.json()
         feature = data['response']['GeoObjectCollection']['featureMember']
         if feature:
             pos = feature[0]['GeoObject']['Point']['pos'].split()
+            long_left = feature[0]['GeoObject']['boundedBy']['Envelope']['lowerCorner'].split()[0]
+            long_right = feature[0]['GeoObject']['boundedBy']['Envelope']['upperCorner'].split()[0]
+            long_diff = abs(float(long_left) - float(long_right))
+            for k in z_lat:
+                if z_lat[k] < long_diff:
+                    z_const = k + 1 if k + 1 != 22 else 21
+                    break
             return pos
         else:
             return None
@@ -118,7 +127,6 @@ class InputBox(pygame.sprite.Sprite):
         return res_event
 
 
-
 class Theme(pygame.sprite.Sprite):
     def __init__(self, group):
         super().__init__(group)
@@ -134,7 +142,7 @@ class Theme(pygame.sprite.Sprite):
 
 btn_theme = Theme(all_sprites)
 map_im = make_request_map(z_const, coord, theme)
-address_input = InputBox(50,0,500, 20, '')
+address_input = InputBox(50, 0, 500, 25, '')
 running = True
 while running:
     for event in pygame.event.get():
