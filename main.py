@@ -14,6 +14,7 @@ theme_group = pygame.sprite.Group()
 z_const = 10
 coord = ['73.088504', '49.807760']
 theme = 'light'
+flag = None
 moving_long = {0: 100.0, 1: 50.0, 2: 25.0, 3: 12.5, 4: 6.25, 5: 3.125, 6: 1.5625, 7: 0.78125, 8: 0.390625,
                9: 0.1953125, 10: 0.09765625, 11: 0.048828125, 12: 0.0244140625, 13: 0.01220703125,
                14: 0.006103515625, 15: 0.0030517578125, 16: 0.00152587890625, 17: 0.000762939453125,
@@ -28,7 +29,7 @@ z_lat = {0: 360.0, 1: 180.0, 2: 90.0, 3: 45.0, 4: 22.5, 5: 11.25, 6: 5.625, 7: 2
          20: 0.00034332275390625, 21: 0.000171661376953125}
 
 
-def make_request_map(new_z, new_ll, new_theme, obj_ll=None):
+def make_request_map(new_z, new_ll, new_theme, obj_ll=None, new_flag=None):
     url = 'https://static-maps.yandex.ru/v1'
     if not obj_ll:
         params = {
@@ -44,7 +45,8 @@ def make_request_map(new_z, new_ll, new_theme, obj_ll=None):
             'apikey': '27b3a50d-38db-4169-addc-85eecaac37e0',
             'll': ','.join(obj_ll),
             'z': str(new_z),
-            'theme': new_theme
+            'theme': new_theme,
+            'pt': new_flag
         }
 
     response = requests.get(url, params)
@@ -73,11 +75,12 @@ def make_request_pos(text):
         print(f'{response.status_code} {response.reason}')
         return None
     else:
-        global z_const
+        global z_const, flag
         data = response.json()
         feature = data['response']['GeoObjectCollection']['featureMember']
         if feature:
             pos = feature[0]['GeoObject']['Point']['pos'].split()
+            flag = f'{",".join(pos)},pm2rdm'
             long_left = feature[0]['GeoObject']['boundedBy']['Envelope']['lowerCorner'].split()[0]
             long_right = feature[0]['GeoObject']['boundedBy']['Envelope']['upperCorner'].split()[0]
             long_diff = abs(float(long_left) - float(long_right))
@@ -166,7 +169,7 @@ while running:
             elif event.key == pygame.K_DOWN:
                 coord[1] = str(float(coord[1]) - moving_lat[z_const]) if float(coord[1]) - moving_lat[
                     z_const] > -85 else str(170 + float(coord[1]) - moving_lat[z_const])
-            map_im = make_request_map(z_const, coord, theme, obj_ll=ll_obj)
+            map_im = make_request_map(z_const, coord, theme, obj_ll=ll_obj, new_flag=flag)
         if event.type == pygame.MOUSEBUTTONDOWN:
             if btn_theme.rect.collidepoint(pygame.mouse.get_pos()):
                 print(1)
