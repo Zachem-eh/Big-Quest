@@ -6,6 +6,8 @@ import os
 
 pygame.init()
 size = width, height = 600, 450
+FPS = 60
+clock = pygame.time.Clock()
 screen = pygame.display.set_mode(size)
 pygame.display.set_caption('Москва')
 all_sprites = pygame.sprite.Group()
@@ -23,14 +25,25 @@ moving_lat = {0: 30.0, 1: 15.0, 2: 7.51, 3: 3, 4: 1.875, 5: 0.9375, 6: 0.46875, 
               18: 0.00011444091796875, 19: 5.7220458984375e-05, 20: 2.86102294921875e-05, 21: 1.430511474609375e-05}
 
 
-def make_request(new_z, new_ll, new_theme):
+def make_request_map(new_z, new_ll, new_theme, obj_ll=None):
     url = 'https://static-maps.yandex.ru/v1'
-    params = {
-        'apikey': '4e60121e-3e68-41f0-bd84-eced30775d1c',
-        'll': ','.join(new_ll),
-        'z': str(new_z),
-        'theme': new_theme
-    }
+    if not obj_ll:
+        params = {
+            'apikey': '4e60121e-3e68-41f0-bd84-eced30775d1c',
+            'll': ','.join(new_ll),
+            'z': str(new_z),
+            'theme': new_theme
+        }
+    else:
+        global z_const, coord
+        coord = obj_ll
+        z_const = 10
+        params = {
+            'apikey': '4e60121e-3e68-41f0-bd84-eced30775d1c',
+            'll': ','.join(obj_ll),
+            'z': str(z_const),
+            'theme': new_theme
+        }
 
     response = requests.get(url, params)
     if not response:
@@ -42,6 +55,68 @@ def make_request(new_z, new_ll, new_theme):
 
     map_image = pygame.image.load('map.png')
     return map_image
+
+
+def make_request_pos(text):
+    url = 'https://geocode-maps.yandex.ru/1.x'
+    params = {
+        'apikey': '957cd94a-71cc-4433-8fbf-279c95c506aa',
+        'geocode': text,
+        'lang': 'ru_RU',
+        'format': 'json'
+    }
+
+    response = requests.get(url=url, params=params)
+
+    if not response:
+        print(f'{response.status_code} {response.reason}')
+        return None
+    else:
+        data = response.json()
+        feature = data['response']['GeoObjectCollection']['featureMember']
+        if feature:
+            pos = feature[0]['GeoObject']['Point']['pos'].split()
+            return pos
+        else:
+            return None
+
+
+class InputBox(pygame.sprite.Sprite):
+    def __init__(self, x, y, w, h, text=''):
+        super().__init__(all_sprites)
+        self.image = pygame.Surface((w, h), pygame.SRCALPHA, 32)
+        self.rect = pygame.Rect(x, y, w, h)
+        self.image.fill(pygame.Color(71, 91, 141))
+        self.color = pygame.Color(71, 91, 141)
+        self.text_color = pygame.Color('black')
+        self.text = text
+        self.txt_surface = pygame.font.Font(None, 32).render(text, True, self.text_color)
+        self.active = False
+
+    def handle_event(self, event):
+        res_event = None
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self.rect.collidepoint(event.pos):
+                self.active = not self.active
+            else:
+                self.active = False
+            self.color = pygame.Color('red') if self.active else pygame.Color(71, 91, 141)
+        if event.type == pygame.KEYDOWN:
+            if self.active:
+                if event.key == pygame.K_RETURN:
+                    if self.text:
+                        res_event = make_request_pos(self.text)
+                    else:
+                        print('у вас пустое поле текста')
+                elif event.key == pygame.K_BACKSPACE:
+                    self.text = self.text[:-1]
+                else:
+                    self.text += event.unicode
+                self.txt_surface = pygame.font.Font(None, 32).render(self.text, True, self.text_color)
+        self.image.fill(self.color)
+        self.image.blit(self.txt_surface, self.txt_surface.get_rect())
+        return res_event
+
 
 
 class Theme(pygame.sprite.Sprite):
@@ -58,12 +133,14 @@ class Theme(pygame.sprite.Sprite):
 
 
 btn_theme = Theme(all_sprites)
-map_im = make_request(z_const, coord, theme)
+map_im = make_request_map(z_const, coord, theme)
+address_input = InputBox(50,0,500, 20, '')
 running = True
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        ll_obj = address_input.handle_event(event)
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_PAGEUP:
                 z_const = z_const + 1 if z_const != 21 else 21
@@ -81,7 +158,7 @@ while running:
             elif event.key == pygame.K_DOWN:
                 coord[1] = str(float(coord[1]) - moving_lat[z_const]) if float(coord[1]) - moving_lat[
                     z_const] > -85 else str(170 + float(coord[1]) - moving_lat[z_const])
-            map_im = make_request(z_const, coord, theme)
+            map_im = make_request_map(z_const, coord, theme, obj_ll=ll_obj)
         if event.type == pygame.MOUSEBUTTONDOWN:
             if btn_theme.rect.collidepoint(pygame.mouse.get_pos()):
                 print(1)
@@ -89,10 +166,11 @@ while running:
                     theme = 'light'
                 else:
                     theme = 'dark'
-            map_im = make_request(z_const, coord, theme)
+            map_im = make_request_map(z_const, coord, theme)
     screen.blit(map_im, (0, 0))
     all_sprites.draw(screen)
     pygame.display.flip()
+    clock.tick(FPS)
 
 os.remove('map.png')
 pygame.quit()
