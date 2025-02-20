@@ -11,6 +11,7 @@ screen = pygame.display.set_mode(size)
 pygame.display.set_caption('Москва')
 all_sprites = pygame.sprite.Group()
 theme_group = pygame.sprite.Group()
+reset_group = pygame.sprite.Group()
 z_const = 10
 coord = ['73.088504', '49.807760']
 theme = 'light'
@@ -138,6 +139,20 @@ class Theme(pygame.sprite.Sprite):
         self.image.blit(text, text_rect)
 
 
+class Reset(pygame.sprite.Sprite):
+    def __init__(self, group):
+        super().__init__(group)
+        self.add(reset_group)
+        self.image = pygame.Surface((65, 35), pygame.SRCALPHA, 32)
+        self.rect = pygame.Rect(550 - 65, 40, 65, 35)
+        pygame.draw.rect(self.image, pygame.Color(71, 91, 141), (0, 0, 65, 35))
+        font = pygame.font.Font(None, 30)
+        text = font.render("Сброс", True, (0, 0, 0))
+        text_rect = text.get_rect(center=(self.rect.width / 2, self.rect.height / 2))
+        self.image.blit(text, text_rect)
+
+
+btn_reset = Reset(all_sprites)
 btn_theme = Theme(all_sprites)
 map_im = make_request_map(z_const, coord, theme)
 address_input = InputBox(50, 0, 500, 25, '')
@@ -167,12 +182,17 @@ while running:
             map_im = make_request_map(z_const, coord, theme, obj_ll=ll_obj, new_flag=flag)
         if event.type == pygame.MOUSEBUTTONDOWN:
             if btn_theme.rect.collidepoint(pygame.mouse.get_pos()):
-                print(1)
                 if theme == 'dark':
                     theme = 'light'
                 else:
                     theme = 'dark'
-            map_im = make_request_map(z_const, coord, theme)
+            if btn_reset.rect.collidepoint(pygame.mouse.get_pos()):
+                flag = None
+                address_input.text = ''
+                address_input.txt_surface = pygame.font.Font(None, 32).render(address_input.text, True, address_input.text_color)
+                address_input.image.fill(address_input.color)
+                address_input.image.blit(address_input.txt_surface, address_input.txt_surface.get_rect())
+            map_im = make_request_map(z_const, coord, theme, obj_ll=ll_obj, new_flag=flag)
     screen.blit(map_im, (0, 0))
     all_sprites.draw(screen)
     pygame.display.flip()
