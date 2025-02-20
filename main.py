@@ -31,24 +31,19 @@ z_lat = {0: 360.0, 1: 180.0, 2: 90.0, 3: 45.0, 4: 22.5, 5: 11.25, 6: 5.625, 7: 2
 
 def make_request_map(new_z, new_ll, new_theme, obj_ll=None, new_flag=None):
     url = 'https://static-maps.yandex.ru/v1'
+    params = {
+        'apikey': '27b3a50d-38db-4169-addc-85eecaac37e0',
+        'z': str(new_z),
+        'theme': new_theme
+    }
     if not obj_ll:
-        params = {
-            'apikey': '27b3a50d-38db-4169-addc-85eecaac37e0',
-            'll': ','.join(new_ll),
-            'z': str(new_z),
-            'theme': new_theme
-        }
+        params['ll'] = ','.join(new_ll)
     else:
         global coord
         coord = obj_ll
-        params = {
-            'apikey': '27b3a50d-38db-4169-addc-85eecaac37e0',
-            'll': ','.join(obj_ll),
-            'z': str(new_z),
-            'theme': new_theme,
-            'pt': new_flag
-        }
-
+        params['ll'] = ','.join(obj_ll)
+    if new_flag:
+        params['pt'] = new_flag
     response = requests.get(url, params)
     if not response:
         print(f'{response.status_code} {response.reason}')
