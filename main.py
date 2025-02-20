@@ -71,7 +71,7 @@ def make_request_pos(text):
         print(f'{response.status_code} {response.reason}')
         return None
     else:
-        global z_const, flag
+        global z_const, flag, address_box
         data = response.json()
         feature = data['response']['GeoObjectCollection']['featureMember']
         if feature:
@@ -84,6 +84,7 @@ def make_request_pos(text):
                 if z_lat[k] < long_diff:
                     z_const = k + 1 if k + 1 != 22 else 21
                     break
+            address_box.address_update(feature[0]['GeoObject']['metaDataProperty']['GeocoderMetaData']['Address']['formatted'])
             return pos
         else:
             return None
@@ -101,25 +102,25 @@ class InputBox(pygame.sprite.Sprite):
         self.txt_surface = pygame.font.Font(None, 32).render(text, True, self.text_color)
         self.active = False
 
-    def handle_event(self, event):
+    def handle_event(self, _event):
         res_event = None
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if self.rect.collidepoint(event.pos):
+        if _event.type == pygame.MOUSEBUTTONDOWN:
+            if self.rect.collidepoint(_event.pos):
                 self.active = not self.active
             else:
                 self.active = False
             self.color = pygame.Color('red') if self.active else pygame.Color(71, 91, 141)
-        if event.type == pygame.KEYDOWN:
+        if _event.type == pygame.KEYDOWN:
             if self.active:
-                if event.key == pygame.K_RETURN:
+                if _event.key == pygame.K_RETURN:
                     if self.text:
                         res_event = make_request_pos(self.text)
                     else:
                         print('у вас пустое поле текста')
-                elif event.key == pygame.K_BACKSPACE:
+                elif _event.key == pygame.K_BACKSPACE:
                     self.text = self.text[:-1]
                 else:
-                    self.text += event.unicode
+                    self.text += _event.unicode
                 self.txt_surface = pygame.font.Font(None, 32).render(self.text, True, self.text_color)
         self.image.fill(self.color)
         self.image.blit(self.txt_surface, self.txt_surface.get_rect())
@@ -140,22 +141,42 @@ class Theme(pygame.sprite.Sprite):
 
 
 class Reset(pygame.sprite.Sprite):
-    def __init__(self, group):
+    def __init__(self, group, x, y, w, h):
         super().__init__(group)
         self.add(reset_group)
-        self.image = pygame.Surface((65, 35), pygame.SRCALPHA, 32)
-        self.rect = pygame.Rect(550 - 65, 40, 65, 35)
-        pygame.draw.rect(self.image, pygame.Color(71, 91, 141), (0, 0, 65, 35))
+        self.image = pygame.Surface((w, h), pygame.SRCALPHA, 32)
+        self.rect = pygame.Rect(x, y, w, h)
+        pygame.draw.rect(self.image, pygame.Color(71, 91, 141), (0, 0, w, h))
         font = pygame.font.Font(None, 30)
         text = font.render("Сброс", True, (0, 0, 0))
         text_rect = text.get_rect(center=(self.rect.width / 2, self.rect.height / 2))
         self.image.blit(text, text_rect)
 
 
-btn_reset = Reset(all_sprites)
+class AddressBox(pygame.sprite.Sprite):
+    def __init__(self, group, x, y, w, h):
+        super().__init__(group)
+        self.image = pygame.Surface((w, h), pygame.SRCALPHA, 32)
+        self.rect = pygame.Rect(x, y, w, h)
+        pygame.draw.rect(self.image, pygame.Color(71, 91, 141), (0, 0, w, h))
+        font = pygame.font.Font(None, 25)
+        text = font.render("*полный адрес будет здесь", True, (0, 0, 0))
+        text_rect = text.get_rect(center=(self.rect.width / 2, self.rect.height / 2))
+        self.image.blit(text, text_rect)
+
+    def address_update(self, text):
+        self.image.fill((71, 91, 141))
+        font = pygame.font.Font(None, 25)
+        text = font.render(text, True, (0, 0, 0))
+        text_rect = text.get_rect(center=(self.rect.width / 2, self.rect.height / 2))
+        self.image.blit(text, text_rect)
+
+
+address_box = AddressBox(all_sprites, 50, 40, 430, 30)
+btn_reset = Reset(all_sprites, 550 - 65, 40, 65, 30)
 btn_theme = Theme(all_sprites)
 map_im = make_request_map(z_const, coord, theme)
-address_input = InputBox(50, 0, 500, 25, '')
+address_input = InputBox(50, 0, 500, 30, '')
 running = True
 while running:
     for event in pygame.event.get():
@@ -192,6 +213,7 @@ while running:
                 address_input.txt_surface = pygame.font.Font(None, 32).render(address_input.text, True, address_input.text_color)
                 address_input.image.fill(address_input.color)
                 address_input.image.blit(address_input.txt_surface, address_input.txt_surface.get_rect())
+                address_box.address_update('*полный адрес будет здесь')
             map_im = make_request_map(z_const, coord, theme, obj_ll=ll_obj, new_flag=flag)
     screen.blit(map_im, (0, 0))
     all_sprites.draw(screen)
