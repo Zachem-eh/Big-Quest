@@ -12,6 +12,7 @@ pygame.display.set_caption('Москва')
 all_sprites = pygame.sprite.Group()
 theme_group = pygame.sprite.Group()
 reset_group = pygame.sprite.Group()
+post_index_group = pygame.sprite.Group()
 z_const = 10
 coord = ['73.088504', '49.807760']
 theme = 'light'
@@ -172,7 +173,29 @@ class AddressBox(pygame.sprite.Sprite):
         self.image.blit(text, text_rect)
 
 
-address_box = AddressBox(all_sprites, 50, 40, 430, 30)
+class PostIndex(pygame.sprite.Sprite):
+    def __init__(self, group, x, y, w, h):
+        super().__init__(group)
+        self.add(post_index_group)
+        self.image = pygame.Surface((w, h), pygame.SRCALPHA, 32)
+        self.rect = pygame.Rect(x, y, w, h)
+        self.color = (71, 91, 141)
+        self.image.fill(self.color)
+        self.font = pygame.font.Font(None, 24)
+        self.text = self.font.render("Индекс", True, (0, 0, 0))
+        self.text_rect = self.text.get_rect(center=(self.rect.width / 2, self.rect.height / 2))
+        self.image.blit(self.text, self.text_rect)
+        self.tumbler = False
+
+    def tumbler_on(self):
+        self.tumbler = True
+        self.color = 'red' if self.color == (71, 91, 141) else (71, 91, 141)
+        self.image.fill(self.color)
+        self.image.blit(self.text, self.text_rect)
+
+
+post_index = PostIndex(all_sprites, 415, 40, 65, 30)
+address_box = AddressBox(all_sprites, 50, 40, 360, 30)
 btn_reset = Reset(all_sprites, 550 - 65, 40, 65, 30)
 btn_theme = Theme(all_sprites)
 map_im = make_request_map(z_const, coord, theme)
@@ -215,6 +238,8 @@ while running:
                 address_input.image.blit(address_input.txt_surface, address_input.txt_surface.get_rect())
                 address_box.address_update('*полный адрес будет здесь')
             map_im = make_request_map(z_const, coord, theme, obj_ll=ll_obj, new_flag=flag)
+            if post_index.rect.collidepoint(pygame.mouse.get_pos()):
+                post_index.tumbler_on()
     screen.blit(map_im, (0, 0))
     all_sprites.draw(screen)
     pygame.display.flip()
