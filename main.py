@@ -85,7 +85,10 @@ def make_request_pos(text):
                 if z_lat[k] < long_diff:
                     z_const = k + 1 if k + 1 != 22 else 21
                     break
-            address_box.address_update(feature[0]['GeoObject']['metaDataProperty']['GeocoderMetaData']['Address']['formatted'])
+            address_for_box = feature[0]['GeoObject']['metaDataProperty']['GeocoderMetaData']['Address']['formatted']
+            if post_index.tumbler and 'postal_code' in feature[0]['GeoObject']['metaDataProperty']['GeocoderMetaData']['Address'].keys():
+                address_for_box += " | " + feature[0]['GeoObject']['metaDataProperty']['GeocoderMetaData']['Address']['postal_code']
+            address_box.address_update(address_for_box)
             return pos
         else:
             return None
@@ -167,7 +170,7 @@ class AddressBox(pygame.sprite.Sprite):
 
     def address_update(self, text):
         self.image.fill((71, 91, 141))
-        font = pygame.font.Font(None, 25)
+        font = pygame.font.Font(None, 20)
         text = font.render(text, True, (0, 0, 0))
         text_rect = text.get_rect(center=(self.rect.width / 2, self.rect.height / 2))
         self.image.blit(text, text_rect)
@@ -188,7 +191,7 @@ class PostIndex(pygame.sprite.Sprite):
         self.tumbler = False
 
     def tumbler_on(self):
-        self.tumbler = True
+        self.tumbler = not self.tumbler
         self.color = 'red' if self.color == (71, 91, 141) else (71, 91, 141)
         self.image.fill(self.color)
         self.image.blit(self.text, self.text_rect)
@@ -237,6 +240,7 @@ while running:
                 address_input.image.fill(address_input.color)
                 address_input.image.blit(address_input.txt_surface, address_input.txt_surface.get_rect())
                 address_box.address_update('*полный адрес будет здесь')
+                post_index.tumbler_on() if post_index.tumbler == True else post_index.tumbler_on()
             map_im = make_request_map(z_const, coord, theme, obj_ll=ll_obj, new_flag=flag)
             if post_index.rect.collidepoint(pygame.mouse.get_pos()):
                 post_index.tumbler_on()
