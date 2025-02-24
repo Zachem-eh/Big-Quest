@@ -94,6 +94,30 @@ def make_request_pos(text):
             return None
 
 
+def change_address_box(text):
+    url = 'https://geocode-maps.yandex.ru/1.x'
+    params = {
+        'apikey': '957cd94a-71cc-4433-8fbf-279c95c506aa',
+        'geocode': text,
+        'lang': 'ru_RU',
+        'format': 'json'
+    }
+    response = requests.get(url=url, params=params)
+    if not response:
+        print(f'{response.status_code} {response.reason}')
+        return None
+    else:
+        data = response.json()
+        feature = data['response']['GeoObjectCollection']['featureMember']
+        if feature:
+            address_for_box = feature[0]['GeoObject']['metaDataProperty']['GeocoderMetaData']['Address']['formatted']
+            if post_index.tumbler and 'postal_code' in feature[0]['GeoObject']['metaDataProperty']['GeocoderMetaData'][
+                'Address'].keys():
+                address_for_box += " | " + feature[0]['GeoObject']['metaDataProperty']['GeocoderMetaData']['Address'][
+                    'postal_code']
+            address_box.address_update(address_for_box)
+
+
 class InputBox(pygame.sprite.Sprite):
     def __init__(self, x, y, w, h, text=''):
         super().__init__(all_sprites)
@@ -163,17 +187,17 @@ class AddressBox(pygame.sprite.Sprite):
         self.image = pygame.Surface((w, h), pygame.SRCALPHA, 32)
         self.rect = pygame.Rect(x, y, w, h)
         pygame.draw.rect(self.image, pygame.Color(71, 91, 141), (0, 0, w, h))
-        font = pygame.font.Font(None, 25)
-        text = font.render("*полный адрес будет здесь", True, (0, 0, 0))
-        text_rect = text.get_rect(center=(self.rect.width / 2, self.rect.height / 2))
-        self.image.blit(text, text_rect)
+        self.font = pygame.font.Font(None, 25)
+        self.text = self.font.render("*полный адрес будет здесь", True, (0, 0, 0))
+        self.text_rect = self.text.get_rect(center=(self.rect.width / 2, self.rect.height / 2))
+        self.image.blit(self.text, self.text_rect)
 
     def address_update(self, text):
         self.image.fill((71, 91, 141))
-        font = pygame.font.Font(None, 20)
-        text = font.render(text, True, (0, 0, 0))
-        text_rect = text.get_rect(center=(self.rect.width / 2, self.rect.height / 2))
-        self.image.blit(text, text_rect)
+        self.font = pygame.font.Font(None, 20)
+        self.text = self.font.render(text, True, (0, 0, 0))
+        self.text_rect = self.text.get_rect(center=(self.rect.width / 2, self.rect.height / 2))
+        self.image.blit(self.text, self.text_rect)
 
 
 class PostIndex(pygame.sprite.Sprite):
@@ -244,6 +268,8 @@ while running:
             map_im = make_request_map(z_const, coord, theme, obj_ll=ll_obj, new_flag=flag)
             if post_index.rect.collidepoint(pygame.mouse.get_pos()):
                 post_index.tumbler_on()
+                if address_box.text != '*полный адрес будет здесь':
+                    change_address_box(address_input.text)
     screen.blit(map_im, (0, 0))
     all_sprites.draw(screen)
     pygame.display.flip()
